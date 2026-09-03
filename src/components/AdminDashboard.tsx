@@ -119,19 +119,23 @@ setEditingReport(null);
     }
   };
 
-  const handleDelete = (id: string, title: string) => {
-    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบรายการเหตุ "${title}" (${id})?`)) {
-      deleteIncidentReport(id);
-      onRefresh();
-    }
-  };
+ const handleDelete = async (id: string, title: string) => {
+  if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบรายการเหตุ "${title}" (${id})?`)) {
+    await deleteIncidentReport(id);
+    onRefresh();
+  }
+};
 
-  const handleResetData = () => {
-    if (confirm('คุณต้องการรีเซ็ตข้อมูลตัวอย่างกลับเป็นค่าเริ่มต้นหรือไม่? ข้อมูลที่บันทึกใหม่จะถูกแทนที่ด้วยข้อมูลทดสอบมาตรฐาน')) {
-      resetToInitialReports();
-      onRefresh();
-    }
-  };
+const handleResetData = async () => {
+  if (
+    confirm(
+      'คุณต้องการรีเซ็ตข้อมูลด้วยการกลับเป็นค่าเริ่มต้นหรือไม่? ข้อมูลที่บันทึกใหม่จะถูกแทนที่ด้วยข้อมูลทดสอบมาตรฐาน'
+    )
+  ) {
+    await resetToInitialReports();
+    onRefresh();
+  }
+};
 
   const exportJSON = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(reports, null, 2));
