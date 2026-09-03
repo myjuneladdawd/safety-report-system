@@ -181,15 +181,7 @@ const exportJSON = () => {
   document.body.removeChild(downloadAnchor);
 };
 
-  const exportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(reports, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `school_safety_reports_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
+
 
   return (
     <div id="admin-dashboard-container" className="max-w-7xl mx-auto py-4 px-4 sm:px-6 space-y-4">
