@@ -95,20 +95,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ reports, onRefre
     setTimelineMessage('');
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+ const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingReport) return;
 
     setIsSaving(true);
-    try {
-      updateIncidentReport(editingReport.id, {
-        status: editStatus,
-        assignedDepartment: editDepartment,
-        assignedOfficer: editOfficer.trim(),
-        adminNotes: editNotes.trim(),
-        newTimelineMessage: timelineMessage.trim() || undefined,
-      });
+try {
+  await updateIncidentReport(editingReport.id, {
+    status: editStatus,
+    assignedDepartment: editDepartment,
+    assignedOfficer: editOfficer.trim(),
+    adminNotes: editNotes.trim(),
+    newTimelineMessage: timelineMessage.trim() || undefined,
+  });
 
+  onRefresh();
+  setEditingReport(null);
       onRefresh();
       setEditingReport(null);
     } catch (err) {
