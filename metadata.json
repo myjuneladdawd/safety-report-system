@@ -1,0 +1,6 @@
+{
+  "name": "ระบบแจ้งเหตุความไม่ปลอดภัยในโรงเรียน",
+  "description": "ระบบรับแจ้งเหตุความไม่ปลอดภัย จุดเสี่ยง และศูนย์ประสานงานสวัสดิภาพ โรงเรียนบ้านบวกหมื้อ สพป.เชียงใหม่ เขต 2",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
