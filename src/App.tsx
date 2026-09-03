@@ -21,10 +21,15 @@ export default function App() {
   const [trackingSelectedId, setTrackingSelectedId] = useState<string | undefined>(undefined);
 
   // Load reports from storage
-  const loadReports = useCallback(() => {
-    const data = getIncidentReports();
+const loadReports = useCallback(async () => {
+  try {
+    const data = await getIncidentReports();
     setReports(data);
-  }, []);
+  } catch (error) {
+    console.error('Failed to load incident reports:', error);
+    setReports([]);
+  }
+}, []);
 
   useEffect(() => {
     loadReports();
