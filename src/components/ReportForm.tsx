@@ -171,8 +171,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         ],
       };
 
-      addIncidentReport(newReport);
-      setSubmittedReport(newReport);
+      const savedReport = await addIncidentReport(newReport);
+      setSubmittedReport(savedReport);
     } catch (err) {
       console.error('Error submitting report:', err);
       alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
