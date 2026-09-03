@@ -1,106 +1,183 @@
-import { INITIAL_INCIDENT_REPORTS } from '../data/mockData';
-import { IncidentReport, IncidentStatus, TimelineEntry } from '../types';
+import {
+  IncidentReport,
+  IncidentStatus,
+} from '../types';
 
-const STORAGE_KEY = 'school_safety_reports_v1';
+/**
+ * Google Apps Script Web App
+ */
+const GAS_URL =
+  'https://script.google.com/macros/s/AKfycbyzDkgF4W7b9NRzs6qMYZVUYsvU3kwX4IcmiMjHHoILT59N43XzL1mHZaYKSsUXcdfN/exec';
 
-// In-memory fallback if localStorage fails or throws
-let memoryReports: IncidentReport[] = [...INITIAL_INCIDENT_REPORTS];
+/**
+ * เรียก Google Apps Script แบบ POST
+ */
+const postToGAS = async <T = unknown>(
+  payload: Record<string, unknown>
+): Promise<T> => {
+  const response = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify(payload),
+  });
 
-export const getIncidentReports = (): IncidentReport[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_INCIDENT_REPORTS));
-      return INITIAL_INCIDENT_REPORTS;
-    }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    return INITIAL_INCIDENT_REPORTS;
-  } catch {
-    return memoryReports;
+  if (!response.ok) {
+    throw new Error(
+      `Google Apps Script HTTP Error: ${response.status}`
+    );
   }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(
+      result.error || 'Google Apps Script ทำงานไม่สำเร็จ'
+    );
+  }
+
+  return result.data as T;
 };
 
-export const saveAllReports = (reports: IncidentReport[]): void => {
-  memoryReports = [...reports];
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
-    window.dispatchEvent(new Event('school_safety_data_change'));
-  } catch (err) {
-    console.warn('Storage save fallback to memory:', err);
-  }
-};
+/**
+ * โหลดรายการแจ้งเหตุทั้งหมดจาก Google Sheets
+ */
+export const getIncidentReports =
+  async (): Promise<IncidentReport[]> => {
+    const url =
+      `${GAS_URL}?action=getReports`;
 
-export const addIncidentReport = (report: IncidentReport): void => {
-  const current = getIncidentReports();
-  const updated = [report, ...current];
-  saveAllReports(updated);
-};
-
-export const updateIncidentReport = (
-  id: string,
-  update: {
-    status?: IncidentStatus;
-    assignedDepartment?: string;
-    assignedOfficer?: string;
-    adminNotes?: string;
-    newTimelineMessage?: string;
-  }
-): IncidentReport | null => {
-  const current = getIncidentReports();
-  const index = current.findIndex((r) => r.id === id);
-  if (index === -1) return null;
-
-  const existing = current[index];
-  const now = new Date();
-  const thaiTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
-
-  const newTimeline: TimelineEntry[] = [...existing.timeline];
-
-  if (update.newTimelineMessage) {
-    newTimeline.push({
-      id: `tl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      status: update.status || existing.status,
-      message: update.newTimelineMessage,
-      timestamp: thaiTimestamp,
-      officer: update.assignedOfficer || existing.assignedOfficer,
+    const response = await fetch(url, {
+      method: 'GET',
     });
-  }
 
-  const updatedReport: IncidentReport = {
-    ...existing,
-    status: update.status ?? existing.status,
-    assignedDepartment: update.assignedDepartment ?? existing.assignedDepartment,
-    assignedOfficer: update.assignedOfficer ?? existing.assignedOfficer,
-    adminNotes: update.adminNotes ?? existing.adminNotes,
-    updatedAt: now.toISOString(),
-    timeline: newTimeline,
+    if (!response.ok) {
+      throw new Error(
+        `Google Apps Script HTTP Error: ${response.status}`
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(
+        result.error || 'ไม่สามารถโหลดข้อมูลแจ้งเหตุได้'
+      );
+    }
+
+    return Array.isArray(result.data)
+      ? result.data
+      : [];
   };
 
-  current[index] = updatedReport;
-  saveAllReports(current);
-  return updatedReport;
-};
+/**
+ * เพิ่มรายการแจ้งเหตุใหม่
+ */
+export const addIncidentReport =
+  async (
+    report: IncidentReport
+  ): Promise<IncidentReport> => {
+    const savedReport =
+      await postToGAS<IncidentReport>({
+        action: 'add',
+        data: report,
+      });
 
-export const deleteIncidentReport = (id: string): boolean => {
-  const current = getIncidentReports();
-  const filtered = current.filter((r) => r.id !== id);
-  if (filtered.length !== current.length) {
-    saveAllReports(filtered);
-    return true;
-  }
-  return false;
-};
+    window.dispatchEvent(
+      new Event('school_safety_data_change')
+    );
 
-export const resetToInitialReports = (): IncidentReport[] => {
-  saveAllReports(INITIAL_INCIDENT_REPORTS);
-  return INITIAL_INCIDENT_REPORTS;
-};
+    return savedReport;
+  };
 
+/**
+ * อัปเดตรายการแจ้งเหตุ
+ */
+export const updateIncidentReport =
+  async (
+    id: string,
+    update: {
+      status?: IncidentStatus;
+      assignedDepartment?: string;
+      assignedOfficer?: string;
+      adminNotes?: string;
+      newTimelineMessage?: string;
+    }
+  ): Promise<IncidentReport> => {
+    if (!id) {
+      throw new Error('ไม่พบ ID ของรายงาน');
+    }
+
+    const updatedReport =
+      await postToGAS<IncidentReport>({
+        action: 'update',
+        id,
+        update,
+      });
+
+    window.dispatchEvent(
+      new Event('school_safety_data_change')
+    );
+
+    return updatedReport;
+  };
+
+/**
+ * ลบรายการแจ้งเหตุ
+ */
+export const deleteIncidentReport =
+  async (
+    id: string
+  ): Promise<boolean> => {
+    if (!id) {
+      throw new Error('ไม่พบ ID ของรายงาน');
+    }
+
+    const result =
+      await postToGAS<boolean>({
+        action: 'delete',
+        id,
+      });
+
+    window.dispatchEvent(
+      new Event('school_safety_data_change')
+    );
+
+    return Boolean(result);
+  };
+
+/**
+ * รีเซ็ตข้อมูลใน Google Sheets
+ */
+export const resetToInitialReports =
+  async (): Promise<IncidentReport[]> => {
+    const reports =
+      await postToGAS<IncidentReport[]>({
+        action: 'reset',
+      });
+
+    window.dispatchEvent(
+      new Event('school_safety_data_change')
+    );
+
+    return Array.isArray(reports)
+      ? reports
+      : [];
+  };
+
+/**
+ * สร้างรหัสแจ้งเหตุ
+ *
+ * ตัวอย่าง:
+ * SCH-2026-1234
+ */
 export const generateIncidentId = (): string => {
   const year = new Date().getFullYear();
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
+
+  const randomNum = Math.floor(
+    1000 + Math.random() * 9000
+  );
+
   return `SCH-${year}-${randomNum}`;
 };
