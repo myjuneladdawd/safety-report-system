@@ -30,7 +30,7 @@ import { CategoryIcon } from './CategoryIcon';
 
 interface AdminDashboardProps {
   reports: IncidentReport[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
 }
 
 const DEPARTMENTS = [
@@ -41,7 +41,10 @@ const DEPARTMENTS = [
   'กลุ่มงานบริหารทั่วไป / อำนวยการ',
 ];
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ reports, onRefresh }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  reports,
+  onRefresh,
+}) => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -96,45 +99,86 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ reports, onRefre
   };
 
  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingReport) return;
+  e.preventDefault();
 
-    setIsSaving(true);
-try {
-  await updateIncidentReport(editingReport.id, {
-    status: editStatus,
-    assignedDepartment: editDepartment,
-    assignedOfficer: editOfficer.trim(),
-    adminNotes: editNotes.trim(),
-    newTimelineMessage: timelineMessage.trim() || undefined,
-  });
+  if (!editingReport) return;
 
- onRefresh();
-setEditingReport(null);
-    } catch (err) {
-      console.error('Failed to update report:', err);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  setIsSaving(true);
 
- const handleDelete = async (id: string, title: string) => {
-  if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบรายการเหตุ "${title}" (${id})?`)) {
+  try {
+    await updateIncidentReport(editingReport.id, {
+      status: editStatus,
+      assignedDepartment: editDepartment,
+      assignedOfficer: editOfficer.trim(),
+      adminNotes: editNotes.trim(),
+      newTimelineMessage: timelineMessage.trim() || undefined,
+    });
+
+    await onRefresh();
+    setEditingReport(null);
+  } catch (err) {
+    console.error('Failed to update report:', err);
+    alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+const handleDelete = async (id: string, title: string) => {
+  if (
+    !confirm(
+      `คุณแน่ใจหรือไม่ว่าต้องการลบรายการเหตุ "${title}" (${id})?`
+    )
+  ) {
+    return;
+  }
+
+  try {
     await deleteIncidentReport(id);
-    onRefresh();
+    await onRefresh();
+  } catch (err) {
+    console.error('Failed to delete report:', err);
+    alert('เกิดข้อผิดพลาดในการลบข้อมูล กรุณาลองใหม่อีกครั้ง');
   }
 };
 
 const handleResetData = async () => {
   if (
-    confirm(
+    !confirm(
       'คุณต้องการรีเซ็ตข้อมูลด้วยการกลับเป็นค่าเริ่มต้นหรือไม่? ข้อมูลที่บันทึกใหม่จะถูกแทนที่ด้วยข้อมูลทดสอบมาตรฐาน'
     )
   ) {
-    await resetToInitialReports();
-    onRefresh();
+    return;
   }
+
+  try {
+    await resetToInitialReports();
+    await onRefresh();
+  } catch (err) {
+    console.error('Failed to reset reports:', err);
+    alert('เกิดข้อผิดพลาดในการรีเซ็ตข้อมูล กรุณาลองใหม่อีกครั้ง');
+  }
+};
+
+const exportJSON = () => {
+  const dataStr =
+    'data:text/json;charset=utf-8,' +
+    encodeURIComponent(JSON.stringify(reports, null, 2));
+
+  const downloadAnchor = document.createElement('a');
+
+  downloadAnchor.setAttribute('href', dataStr);
+
+  downloadAnchor.setAttribute(
+    'download',
+    `school_safety_reports_${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`
+  );
+
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  document.body.removeChild(downloadAnchor);
 };
 
   const exportJSON = () => {
