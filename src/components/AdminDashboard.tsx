@@ -109,10 +109,8 @@ try {
     newTimelineMessage: timelineMessage.trim() || undefined,
   });
 
-  onRefresh();
-  setEditingReport(null);
-      onRefresh();
-      setEditingReport(null);
+ onRefresh();
+setEditingReport(null);
     } catch (err) {
       console.error('Failed to update report:', err);
       alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
