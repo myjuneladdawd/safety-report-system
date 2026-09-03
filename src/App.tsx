@@ -30,6 +30,11 @@ const loadReports = useCallback(async () => {
     setReports([]);
   }
 }, []);
+  } catch (error) {
+    console.error('Failed to load incident reports:', error);
+    setReports([]);
+  }
+}, []);
 
   useEffect(() => {
     loadReports();
